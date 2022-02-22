@@ -1,7 +1,17 @@
-version: '3'
+
+version: "3"
 
 services:
-    brevets:
-        build: brevets/.
-        command: python -u flask_brevets.py
-        ports: "5000:5000"
+  brevets:
+    build: brevets/.
+    command: python -u flask_brevets.py
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mymongodb
+    environment:
+      MONGODB_HOSTNAME: mymongodb
+  mymongodb:
+    image: mongo:latest
+    ports:
+      - "5001:27017"
