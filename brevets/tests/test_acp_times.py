@@ -4,6 +4,8 @@ Nose tests for acp_times.py
 Write your tests HERE AND ONLY HERE.
 """
 import acp_times
+import dbFunctions
+import flask
 import arrow
 import nose    # Testing framework
 import logging
@@ -99,3 +101,13 @@ def test_brevit1000():
         assert(acp_times.close_time(430, 1000,starttime) == s430)
         assert(acp_times.close_time(630, 1000,starttime) == s630)
         assert(acp_times.close_time(1150, 1000,starttime) == s1150)
+
+
+def test_submit():
+    callWithNoValue = dbFunctions.submit(None)
+    assert(callWithNoValue == 204)
+
+
+def test_display():
+    callwithnodb = dbFunctions.submit({"dist":10, "start":10, "checkpoints":[]})
+    assert(callwithnodb == 204)

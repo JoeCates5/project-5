@@ -118,18 +118,21 @@
             var SCRIPT_ROOT = {{ request.script_root|tojson|safe }} ;
             var TIME_CALC_URL = SCRIPT_ROOT + "/_calc_times";
 
-            var SUBMIT_URL  = SCRIPT_ROOT + "/_submit";
+            var SUBMIT_URL  = SCRIPT_ROOT + "/submit";
 
-            var DISPLAY_URL  = SCRIPT_ROOT + "/_display";
+            var DISPLAY_URL  = SCRIPT_ROOT + "/display";
 
             // FIX ME!
             // Right now, only the kilometers are passed
             // you need to pass much more!
             // View flask_brevets.py for details.
             function calc_times(control) {
+              console.log("hello")
               var km = control.find("input[name='km']").val();
+
               var distId = document.getElementById('brevet_dist_km');
               var distVal = distId.value;
+
               var begin_date = document.getElementById("begin_date").value;
 
               var location_field = control.find("input[name='location']");
@@ -137,7 +140,7 @@
               var open_time_field = control.find("input[name='open']");
               var close_time_field = control.find("input[name='close']");
 
-              $.getJSON(TIME_CALC_URL, {km: km, distance: distVal, begin_date: begin_date}).done(
+              $.getJSON(TIME_CALC_URL, {km: km, begin_date: begin_date, distance: distVal}).done(
                 function(data) {
                    var times = data.result;
                    console.log("Got a response: ");
@@ -146,8 +149,6 @@
                    // so don't worry about those.
                    open_time_field.val(moment(times.open).format("YYYY-MM-DDTHH:mm"));
                    close_time_field.val(moment(times.close).format("YYYY-MM-DDTHH:mm"));
-                     }
-                   )
                  }
                ).fail(function(err){
                  // In case you get an error...
@@ -157,54 +158,63 @@
             }
 
 
+
             $("#submit").click(function(){
-              var km = control.find("input[name='km']").val();
+              var distVal = document.getElementById('brevet_dist_km').value;
+              var begin_date = document.getElementById("begin_date").value;
 
-              var distVal = document.getElementById('brevet_dist_km').val();
-
-              var begin_date = document.getElementById("begin_date").val();
-
-              var location_field = control.find("input[name='location']").val();
-
-              var open_time_field = control.find("input[name='open']").val();
-              var close_time_field = control.find("input[name='close']").val();
+              var km = document.getElementsByName("km");
+              var mile = document.getElementsByName("miles");
+              var location = document.getElementsByName("location");
+              var open = document.getElementsByName("open");
+              var close = document.getElementsByName("close");
 
               checkpoints = []
-              for(let i = 0; i < 21; i++){
-                if(km[i]){
-                  checkpoint.push({
-                  "km": km,
-                  "location_field": location_field,
-                  "open":open_time_field,
-                  "close":close_time_field
-                  })
+              for(let i = 0; i < 20; i++){
+                if(km[i].value){
+                  checkpoints.push({
+                  "mile": mile[i].value,
+                  "km": km[i].value,
+                  "location": location[i].value,
+                  "open":open[i].value,
+                  "close":close[i].value
+                });
                 }
               }
-              $.post(SUBMIT_URL, {"dist":distVal, "start": begin_date, "checkpoints":checkpoints } )
-            })
+              for (let x = 0; x < 20; x++){
+                km[x].value = null;
+                mile[x].value = null;
+                location[x].value = null;
+                open[x].value = null;
+                close[x].value = null;
+              }
+              $.post(SCRIPT_ROOT + "/submit", {"dist": distVal, "start": begin_date, "checkpoints": JSON.stringify(checkpoints)})
+            });
 
             $("#display").click(function(){
               $.getJSON(DISPLAY_URL).done(
                 function(data){
-                    start = data.brevets['start'];
                     dist = data.brevets['dist'];
+                    start = data.brevets['start'];
                     checkpoints = JSON.parse(data.brevets['checkpoints'])
 
                     document.getElementById('brevet_dist_km').value = dist;
                     document.getElementById('begin_date').value = start;
 
-                    kms = document.getElementsByName('km');
-                    Miles = document.getElementsByName('miles');
-                    Locations = document.getElementsByName('location');
-                    Opens = document.getElementsByName('open');
-                    Closes = document.getElementsByName('close');
+                    var control = $(this).parents(".control")
 
-                    for(let i = 0; i < Controls.length; i++){
-                      kms[i].val() = Controls[i]['kms'];
-                      Miles[i].val() = Controls[i]['miles'];
-                      Locations[i].val() = Controls[i]['location'];
-                      Opens[i].val() = Controls[i]['opening'];
-                      Closes[i].val() = Controls[i]['close'];
+                    var km = document.getElementsByName("km");
+                    var mile = document.getElementsByName("miles");
+                    var location = document.getElementsByName("location");
+                    var open = document.getElementsByName("open");
+                    var close = document.getElementsByName("close");
+
+                    for(let i = 0; i < checkpoints.length; i++){
+                      km[i].value = checkpoints[i]['km'];
+                      mile[i].value = checkpoints[i]['mile'];
+                      location[i].value = checkpoints[i]['location'];
+                      open[i].value = checkpoints[i]['open'];
+                      close[i].value = checkpoints[i]['close'];
                     }
                 }
               )

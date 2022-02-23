@@ -12,9 +12,10 @@ import config
 
 import logging
 
-import os
 import pymongo
 from pymongo import MongoClient
+import os
+
 
 ###
 # Globals
@@ -25,10 +26,6 @@ CONFIG = config.configuration()
 ###
 # Pages
 ###
-
-client = MongoClient('mongodb://' + os.environ['MONGODB_HOSTNAME'], 27017)
-
-
 @app.route("/")
 @app.route("/index")
 def index():
@@ -56,9 +53,14 @@ def _calc_times():
     Expects one URL-encoded argument, the number of miles.
     """
     app.logger.debug("Got a JSON request")
+
+
     km = request.args.get('km', 999, type=float)
     distance = request.args.get('distance', 999, type=int)
     begin_date = request.args.get('begin_date')
+
+
+
     app.logger.debug("km={}".format(km))
     app.logger.debug("distance={}".format(distance))
     app.logger.debug("begin_date={}".format(begin_date))
@@ -72,43 +74,46 @@ def _calc_times():
     result = {"open": open_time, "close": close_time}
     return flask.jsonify(result=result)
 
-@app.route("/_submit", methods=['POST'])
-def _submit():
+@app.route("/submit", methods=['POST'])
+def submit():
     if(not request):
-        return flask.Response(status=403)
-    elif(request.args.get('checkpoint') == []):
-        return flask.Response(status=403)
+        #request contains no data
+        return flask.Response(status=204)
+    if(request.form['checkpoints'] == []):
+        #request contains checkpoints to store
+        return flask.Response(status=204)
     else:
+
         data = {
-        'dist': request.args.get('dist'),
-        'start': request.args.get('start'),
-        'checkpoint': request.args.get('checkpoint')
+        'dist': request.form['dist'],
+        'start': request.form['start'],
+        'checkpoints': request.form['checkpoints']
         }
+        client = MongoClient('mongodb://' + os.environ['MONGODB_HOSTNAME'], 27017)
         brevetDB = client.brevetDB
-        brevetDB.posts.insert_one(data)
-        brevetDB.close
+        itemId = brevetDB.posts.insert_one(data)
+        client.close()
         return flask.Response(status=200)
 
-@app.route("/_display")
-def _display():
+@app.route("/display")
+def display():
     client = MongoClient('mongodb://' + os.environ['MONGODB_HOSTNAME'], 27017)
     if(not client):
-        return flask.jsonify({"start":'', "dist":'', "checkpoints":''})
+        #cant connect to the client
+        return flask.jsonify(status=500, brevets={"dist": "", "start": "", "checkpoints": ""})
 
     brevetDB = client.brevetDB
-    data = mydb.posts.find_one(sort=[('_id', pymongo.DESCENDING)])
-
+    data = brevetDB.posts.find_one(sort=[('_id', pymongo.DESCENDING)])
     if(not data):
-        return flask.jsonify({"start":'', "dist":'', "checkpoints":''})
+        #we do not have any data
+        return flask.jsonify(status=204, brevets={"dist": "", "start": "", "checkpoints": ""})
 
-    dist = data[dist]
-    start = data[start]
-    checkpoints = data[checkpoints]
+    dist = data["dist"]
+    start = data["start"]
+    checkpoints = data["checkpoints"]
 
-    return flask.jsonify({"start":start, "dist":dist, "checkpoints":checkpoints})
-
-
-
+    client.close()
+    return flask.jsonify(status=200, brevets={"dist": dist, "start": start, "checkpoints": checkpoints})
 #############
 
 app.debug = CONFIG.DEBUG
@@ -117,4 +122,4 @@ if app.debug:
 
 if __name__ == "__main__":
     print("Opening for global access on port {}".format(CONFIG.PORT))
-    app.run(port=CONFIG.DEBUG, host="0.0.0.0")
+    app.run(port=CONFIG.PORT, host="0.0.0.0")
